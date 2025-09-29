@@ -128,7 +128,7 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
                     <FormControl>
                       <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input {...field} type="email" placeholder="tu@email.com" className="pl-10" />
+                        <Input {...field} type="email" placeholder="tu@email.com" className="pl-10" autoComplete="email" />
                       </div>
                     </FormControl>
                     <FormMessage />
@@ -147,7 +147,7 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
           </Form>
         ) : (
           <Form {...codeForm}>
-            <form onSubmit={codeForm.handleSubmit(onSubmitCode)} className="space-y-4">
+            <form onSubmit={codeForm.handleSubmit(onSubmitCode)} className="space-y-4" autoComplete="off">
               <FormField
                 control={codeForm.control}
                 name="code"
@@ -160,9 +160,15 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
                         placeholder="123456" 
                         maxLength={6}
                         className="text-center text-lg tracking-widest"
-                        autoComplete="one-time-code"
+                        autoComplete="off"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoCorrect="off"
+                        autoCapitalize="off"
+                        spellCheck={false}
                         disabled={isLoading}
                         name={field.name}
+                        id="otp-code"
                         ref={field.ref}
                         value={field.value || ''}
                         onChange={(e) => {
