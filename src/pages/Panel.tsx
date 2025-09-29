@@ -1,16 +1,19 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, Edit, FileText } from 'lucide-react';
+import { Plus, Eye, Edit, FileText, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Header } from '@/components/layout/Header';
+import { useToast } from '@/hooks/use-toast';
 import { Invoice, STORAGE_KEYS } from '@/types';
 import { initialInvoices } from '@/data/mockData';
 
 export default function Panel() {
   const navigate = useNavigate();
+  const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
 
   useEffect(() => {
@@ -54,6 +57,17 @@ export default function Panel() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CO');
+  };
+
+  const handleDeleteInvoice = (invoiceId: string) => {
+    const updatedInvoices = invoices.filter(invoice => invoice.id !== invoiceId);
+    setInvoices(updatedInvoices);
+    localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updatedInvoices));
+    
+    toast({
+      title: "Factura eliminada",
+      description: "El borrador de la factura ha sido eliminado correctamente.",
+    });
   };
 
   return (
@@ -130,6 +144,35 @@ export default function Panel() {
                             >
                               <Edit className="h-4 w-4" />
                             </Button>
+                          )}
+                          {invoice.status === 'Borrador' && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>¿Eliminar borrador?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta acción no se puede deshacer. El borrador de la factura será eliminado permanentemente.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => handleDeleteInvoice(invoice.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Eliminar
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           )}
                           <Button
                             variant="ghost"
