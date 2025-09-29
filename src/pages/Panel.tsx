@@ -137,15 +137,6 @@ export default function Panel() {
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
                           {invoice.status === 'Borrador' && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => navigate(`/facturas/${invoice.id}/editar`)}
-                            >
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          )}
-                          {invoice.status === 'Borrador' && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>
                                 <Button
@@ -173,6 +164,15 @@ export default function Panel() {
                                 </AlertDialogFooter>
                               </AlertDialogContent>
                             </AlertDialog>
+                          )}
+                          {invoice.status === 'Borrador' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => navigate(`/facturas/${invoice.id}/editar`)}
+                            >
+                              <Edit className="h-4 w-4" />
+                            </Button>
                           )}
                           <Button
                             variant="ghost"
