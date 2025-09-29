@@ -157,9 +157,11 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
                     <FormControl>
                       <Input 
                         {...field} 
+                        type="text"
                         placeholder="123456" 
                         maxLength={6}
                         className="text-center text-lg tracking-widest"
+                        autoComplete="one-time-code"
                       />
                     </FormControl>
                     <FormMessage />
