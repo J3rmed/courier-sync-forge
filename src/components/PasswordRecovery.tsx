@@ -156,18 +156,20 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
                     <FormLabel>Código de Verificación</FormLabel>
                     <FormControl>
                       <Input 
-                        {...field} 
                         type="text"
                         placeholder="123456" 
                         maxLength={6}
                         className="text-center text-lg tracking-widest"
                         autoComplete="one-time-code"
                         disabled={isLoading}
+                        name={field.name}
+                        ref={field.ref}
                         value={field.value || ''}
                         onChange={(e) => {
                           const value = e.target.value.replace(/\D/g, '');
                           field.onChange(value);
                         }}
+                        onBlur={field.onBlur}
                       />
                     </FormControl>
                     <FormMessage />
