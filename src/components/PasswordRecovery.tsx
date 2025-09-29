@@ -162,6 +162,12 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
                         maxLength={6}
                         className="text-center text-lg tracking-widest"
                         autoComplete="one-time-code"
+                        disabled={isLoading}
+                        value={field.value || ''}
+                        onChange={(e) => {
+                          const value = e.target.value.replace(/\D/g, '');
+                          field.onChange(value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
