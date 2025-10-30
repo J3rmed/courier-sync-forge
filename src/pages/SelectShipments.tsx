@@ -9,6 +9,7 @@ import { Header } from '@/components/layout/Header';
 import { Shipment, STORAGE_KEYS } from '@/types';
 import { initialShipments } from '@/data/mockData';
 import { toast } from '@/hooks/use-toast';
+import { resetLocalStorage } from '@/lib/resetData';
 
 export default function SelectShipments() {
   const navigate = useNavigate();
@@ -16,8 +17,13 @@ export default function SelectShipments() {
   const [selectedShipments, setSelectedShipments] = useState<string[]>([]);
 
   useEffect(() => {
-    // Cargar envíos del localStorage o usar datos iniciales
+    // Reiniciar datos automáticamente si no hay envíos
     const savedShipments = localStorage.getItem(STORAGE_KEYS.SHIPMENTS);
+    if (!savedShipments || JSON.parse(savedShipments).length === 0) {
+      resetLocalStorage();
+    }
+    
+    // Cargar envíos del localStorage o usar datos iniciales
     if (savedShipments) {
       try {
         const parsed = JSON.parse(savedShipments);

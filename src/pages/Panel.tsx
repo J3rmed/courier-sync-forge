@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, Edit, FileText, Trash2, Download, Send } from 'lucide-react';
+import { Plus, Eye, Edit, FileText, Trash2, Download, Send, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -12,6 +12,7 @@ import { Invoice, STORAGE_KEYS } from '@/types';
 import { initialInvoices, defaultTemplates } from '@/data/mockData';
 import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import { useInvoiceEmission } from '@/hooks/useInvoiceEmission';
+import { resetLocalStorage } from '@/lib/resetData';
 
 export default function Panel() {
   const navigate = useNavigate();
@@ -21,6 +22,12 @@ export default function Panel() {
   const { emitInvoice, isEmitting } = useInvoiceEmission();
 
   useEffect(() => {
+    // Reiniciar datos automáticamente si no hay envíos
+    const savedShipments = localStorage.getItem(STORAGE_KEYS.SHIPMENTS);
+    if (!savedShipments || JSON.parse(savedShipments).length === 0) {
+      resetLocalStorage();
+    }
+    
     // Cargar facturas del localStorage o usar datos iniciales
     const savedInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
     if (savedInvoices) {
