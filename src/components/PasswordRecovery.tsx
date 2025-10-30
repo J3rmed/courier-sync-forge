@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { InputOTP, InputOTPGroup, InputOTPSlot } from '@/components/ui/input-otp';
 import { toast } from '@/hooks/use-toast';
 
 const emailSchema = z.object({
@@ -27,7 +28,8 @@ interface PasswordRecoveryProps {
 
 export default function PasswordRecovery({ open, onOpenChange }: PasswordRecoveryProps) {
   const [step, setStep] = useState<'email' | 'code'>('email');
-  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [isVerifying, setIsVerifying] = useState(false);
   const [email, setEmail] = useState('');
 
   const emailForm = useForm<EmailForm>({
@@ -41,7 +43,7 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
   });
 
   const onSubmitEmail = async (data: EmailForm) => {
-    setIsLoading(true);
+    setIsSending(true);
     try {
       // Simular envío de código
       await new Promise(resolve => setTimeout(resolve, 1500));
@@ -58,12 +60,12 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
         variant: 'destructive'
       });
     } finally {
-      setIsLoading(false);
+      setIsSending(false);
     }
   };
 
   const onSubmitCode = async (data: CodeForm) => {
-    setIsLoading(true);
+    setIsVerifying(true);
     try {
       // Simular verificación de código
       await new Promise(resolve => setTimeout(resolve, 1000));
@@ -88,7 +90,7 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
         variant: 'destructive'
       });
     } finally {
-      setIsLoading(false);
+      setIsVerifying(false);
     }
   };
 
@@ -100,8 +102,14 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
     onOpenChange(false);
   };
 
+  useEffect(() => {
+    if (step === 'code') {
+      setTimeout(() => document.getElementById('otp-code')?.focus(), 100);
+    }
+  }, [step]);
+
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog open={open} onOpenChange={(next) => { if (!next) handleClose(); }}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -139,8 +147,8 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
                 <Button type="button" variant="outline" onClick={handleClose} className="flex-1">
                   Cancelar
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1">
-                  {isLoading ? 'Enviando...' : 'Enviar Código'}
+                <Button type="submit" disabled={isSending} className="flex-1">
+                  {isSending ? 'Enviando...' : 'Enviar Código'}
                 </Button>
               </div>
             </form>
@@ -155,42 +163,35 @@ export default function PasswordRecovery({ open, onOpenChange }: PasswordRecover
                   <FormItem>
                     <FormLabel>Código de Verificación</FormLabel>
                     <FormControl>
-                      <Input 
-                        type="text"
-                        placeholder="123456" 
-                        maxLength={6}
-                        className="text-center text-lg tracking-widest"
-                        autoComplete="off"
-                        inputMode="numeric"
-                        pattern="[0-9]*"
-                        autoCorrect="off"
-                        autoCapitalize="off"
-                        spellCheck={false}
-                        disabled={isLoading}
-                        name={field.name}
+                      <InputOTP
                         id="otp-code"
-                        ref={field.ref}
-                        value={field.value || ''}
-                        onChange={(e) => {
-                          const value = e.target.value.replace(/\D/g, '');
-                          field.onChange(value);
-                        }}
-                        onBlur={field.onBlur}
-                      />
+                        maxLength={6}
+                        value={field.value ?? ""}
+                        onChange={(val) => field.onChange(val.replace(/\D/g, "").slice(0, 6))}
+                        autoComplete="one-time-code"
+                        disabled={isVerifying}
+                        containerClassName="justify-center"
+                      >
+                        <InputOTPGroup>
+                          {[0, 1, 2, 3, 4, 5].map((i) => (
+                            <InputOTPSlot key={i} index={i} className="h-12 w-12 text-lg" />
+                          ))}
+                        </InputOTPGroup>
+                      </InputOTP>
                     </FormControl>
                     <FormMessage />
-                    <p className="text-xs text-muted-foreground text-center">
+                    <p className="text-xs text-muted-foreground text-center mt-2">
                       Para esta demo, usa el código: <span className="font-mono font-semibold">123456</span>
                     </p>
                   </FormItem>
                 )}
               />
               <div className="flex gap-2">
-                <Button type="button" variant="outline" onClick={() => setStep('email')} className="flex-1">
+                <Button type="button" variant="outline" onClick={() => setStep('email')} className="flex-1" disabled={isVerifying}>
                   Atrás
                 </Button>
-                <Button type="submit" disabled={isLoading} className="flex-1">
-                  {isLoading ? 'Verificando...' : 'Verificar'}
+                <Button type="submit" disabled={isVerifying} className="flex-1">
+                  {isVerifying ? 'Verificando...' : 'Verificar'}
                 </Button>
               </div>
             </form>
