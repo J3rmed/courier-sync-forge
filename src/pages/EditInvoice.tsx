@@ -19,6 +19,7 @@ const invoiceSchema = z.object({
   clientNit: z.string().min(1, 'El NIT es requerido'),
   clientAddress: z.string().min(5, 'La dirección es requerida'),
   clientEmail: z.string().email('Email inválido'),
+  clientSegment: z.enum(['retail', 'mayorista', 'corporativo']).optional(),
   issueDate: z.string().min(1, 'La fecha de emisión es requerida'),
   dueDate: z.string().min(1, 'La fecha de vencimiento es requerida'),
   paymentMethod: z.string().min(1, 'El método de pago es requerido'),
@@ -41,6 +42,7 @@ export default function EditInvoice() {
       clientNit: '',
       clientAddress: '',
       clientEmail: '',
+      clientSegment: 'retail',
       issueDate: '',
       dueDate: '',
       paymentMethod: '',
@@ -64,6 +66,7 @@ export default function EditInvoice() {
             clientNit: foundInvoice.clientNit,
             clientAddress: foundInvoice.clientAddress,
             clientEmail: foundInvoice.clientEmail,
+            clientSegment: foundInvoice.clientSegment || 'retail',
             issueDate: foundInvoice.issueDate,
             dueDate: foundInvoice.dueDate,
             paymentMethod: foundInvoice.paymentMethod,
@@ -266,6 +269,28 @@ export default function EditInvoice() {
                         <FormControl>
                           <Input type="email" placeholder="cliente@empresa.com" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="clientSegment"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Segmento del Cliente</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un segmento" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="retail">Retail</SelectItem>
+                            <SelectItem value="mayorista">Mayorista</SelectItem>
+                            <SelectItem value="corporativo">Corporativo</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}

@@ -1,18 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, User, Calendar, CreditCard, Calculator } from 'lucide-react';
+import { ArrowLeft, FileText, User, Calendar, CreditCard, Calculator, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Header } from '@/components/layout/Header';
 import { Invoice, STORAGE_KEYS } from '@/types';
+import { usePDFGenerator } from '@/hooks/usePDFGenerator';
+import { PDFTemplateSelector } from '@/components/PDFTemplateSelector';
+import { defaultTemplates } from '@/data/mockData';
 
 export default function ViewInvoice() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
+  const { generatePDF, isGenerating } = usePDFGenerator();
+  const [selectedTemplate, setSelectedTemplate] = useState(
+    defaultTemplates.find(t => t.segment === 'retail') || defaultTemplates[0]
+  );
 
   useEffect(() => {
     const savedInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
@@ -21,6 +29,14 @@ export default function ViewInvoice() {
         const invoices: Invoice[] = JSON.parse(savedInvoices);
         const foundInvoice = invoices.find(inv => inv.id === id);
         setInvoice(foundInvoice || null);
+        
+        // Seleccionar plantilla según el segmento del cliente
+        if (foundInvoice?.clientSegment) {
+          const template = defaultTemplates.find(t => t.segment === foundInvoice.clientSegment);
+          if (template) {
+            setSelectedTemplate(template);
+          }
+        }
       } catch (error) {
         console.error('Error loading invoice:', error);
       }
@@ -51,6 +67,11 @@ export default function ViewInvoice() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('es-CO');
+  };
+
+  const handleGeneratePDF = async () => {
+    if (!invoice || !selectedTemplate) return;
+    await generatePDF(invoice, selectedTemplate);
   };
 
   if (!invoice) {
@@ -94,6 +115,48 @@ export default function ViewInvoice() {
               {getStatusBadge(invoice.status)}
             </div>
           </div>
+
+          {invoice.status === 'Emitida' && (
+            <Dialog>
+              <DialogTrigger asChild>
+                <Button variant="default" className="gap-2">
+                  <Download className="h-4 w-4" />
+                  Generar PDF
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[500px]">
+                <DialogHeader>
+                  <DialogTitle>Generar PDF de Factura</DialogTitle>
+                  <DialogDescription>
+                    Selecciona la plantilla que deseas usar para el documento
+                  </DialogDescription>
+                </DialogHeader>
+                
+                <PDFTemplateSelector
+                  templates={defaultTemplates}
+                  selectedSegment={invoice.clientSegment}
+                  onSelectTemplate={setSelectedTemplate}
+                />
+                
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button
+                    onClick={handleGeneratePDF}
+                    disabled={isGenerating}
+                    className="gap-2"
+                  >
+                    {isGenerating ? (
+                      <>Generando...</>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4" />
+                        Descargar PDF
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
         </div>
 
         <div className="grid gap-6 md:grid-cols-2">

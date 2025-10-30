@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Plus, Eye, Edit, FileText, Trash2 } from 'lucide-react';
+import { Plus, Eye, Edit, FileText, Trash2, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -9,12 +9,14 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Header } from '@/components/layout/Header';
 import { useToast } from '@/hooks/use-toast';
 import { Invoice, STORAGE_KEYS } from '@/types';
-import { initialInvoices } from '@/data/mockData';
+import { initialInvoices, defaultTemplates } from '@/data/mockData';
+import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 
 export default function Panel() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const { generatePDF, isGenerating } = usePDFGenerator();
 
   useEffect(() => {
     // Cargar facturas del localStorage o usar datos iniciales
@@ -136,6 +138,22 @@ export default function Panel() {
                       <TableCell>{getStatusBadge(invoice.status)}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex justify-end gap-2">
+                          {invoice.status === 'Emitida' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                const template = defaultTemplates.find(
+                                  t => t.segment === invoice.clientSegment
+                                ) || defaultTemplates[0];
+                                generatePDF(invoice, template);
+                              }}
+                              disabled={isGenerating}
+                              title="Generar PDF"
+                            >
+                              <Download className="h-4 w-4" />
+                            </Button>
+                          )}
                           {invoice.status === 'Borrador' && (
                             <AlertDialog>
                               <AlertDialogTrigger asChild>

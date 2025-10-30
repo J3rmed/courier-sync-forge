@@ -22,6 +22,27 @@ export interface InvoiceItem {
 // Estado de la factura
 export type InvoiceStatus = 'Borrador' | 'Emitida' | 'Pagada';
 
+// Segmento del cliente para plantillas PDF
+export type ClientSegment = 'retail' | 'mayorista' | 'corporativo';
+
+// Modelo para plantillas PDF
+export interface PDFTemplate {
+  id: string;
+  name: string;
+  segment: ClientSegment;
+  logoUrl?: string;
+  primaryColor: string;
+  secondaryColor: string;
+  footerText: string;
+  companyInfo: {
+    name: string;
+    nit: string;
+    address: string;
+    phone: string;
+    email: string;
+  };
+}
+
 // Modelo principal de la Factura
 export interface Invoice {
   id: string; // ej. "Draft-2025-001" o "F-2025-001"
@@ -32,6 +53,7 @@ export interface Invoice {
   clientNit: string;
   clientAddress: string;
   clientEmail: string;
+  clientSegment?: ClientSegment; // Segmento para seleccionar plantilla PDF
 
   // Datos de la Factura
   issueDate: string; // Formato YYYY-MM-DD
@@ -45,6 +67,10 @@ export interface Invoice {
   taxAmount: number; // Monto del IVA (19%)
   total: number;
   observations?: string;
+  
+  // Metadatos de PDF
+  pdfGeneratedAt?: string; // Timestamp de generación del PDF
+  pdfUrl?: string; // URL del PDF generado (si se guarda)
 }
 
 // Usuario simulado

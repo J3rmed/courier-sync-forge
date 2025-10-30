@@ -1,4 +1,4 @@
-import { Shipment, Invoice, User } from '@/types';
+import { Shipment, Invoice, User, PDFTemplate } from '@/types';
 
 // Usuario mock para el login
 export const mockUser: User = {
@@ -53,6 +53,55 @@ export const initialShipments: Shipment[] = [
   }
 ];
 
+// Plantillas PDF por defecto
+export const defaultTemplates: PDFTemplate[] = [
+  {
+    id: 'template-retail',
+    name: 'Plantilla Retail',
+    segment: 'retail',
+    primaryColor: '#3b82f6',
+    secondaryColor: '#1e40af',
+    footerText: 'Gracias por su compra. Cliente retail preferencial.',
+    companyInfo: {
+      name: 'CourierSync Colombia',
+      nit: '900.000.000-1',
+      address: 'Calle 100 #19-20, Bogotá',
+      phone: '+57 (1) 600-0000',
+      email: 'facturacion@couriersync.com'
+    }
+  },
+  {
+    id: 'template-mayorista',
+    name: 'Plantilla Mayorista',
+    segment: 'mayorista',
+    primaryColor: '#10b981',
+    secondaryColor: '#059669',
+    footerText: 'Cliente mayorista. Condiciones especiales aplicadas.',
+    companyInfo: {
+      name: 'CourierSync Colombia',
+      nit: '900.000.000-1',
+      address: 'Calle 100 #19-20, Bogotá',
+      phone: '+57 (1) 600-0000',
+      email: 'mayoristas@couriersync.com'
+    }
+  },
+  {
+    id: 'template-corporativo',
+    name: 'Plantilla Corporativo',
+    segment: 'corporativo',
+    primaryColor: '#8b5cf6',
+    secondaryColor: '#6d28d9',
+    footerText: 'Cliente corporativo premium. Servicio de atención 24/7.',
+    companyInfo: {
+      name: 'CourierSync Colombia',
+      nit: '900.000.000-1',
+      address: 'Calle 100 #19-20, Bogotá',
+      phone: '+57 (1) 600-0000',
+      email: 'corporativo@couriersync.com'
+    }
+  }
+];
+
 // Facturas de ejemplo
 export const initialInvoices: Invoice[] = [
   {
@@ -62,6 +111,7 @@ export const initialInvoices: Invoice[] = [
     clientNit: '900.123.456-7',
     clientAddress: 'Calle 26 #13-25, Bogotá',
     clientEmail: 'contabilidad@abc.com',
+    clientSegment: 'mayorista',
     issueDate: '2025-01-15',
     dueDate: '2025-02-15',
     paymentMethod: 'Transferencia Bancaria',

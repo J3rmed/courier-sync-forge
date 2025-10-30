@@ -20,6 +20,7 @@ const invoiceSchema = z.object({
   clientNit: z.string().min(1, 'El NIT es requerido'),
   clientAddress: z.string().min(1, 'La dirección es requerida'),
   clientEmail: z.string().email('Email inválido'),
+  clientSegment: z.enum(['retail', 'mayorista', 'corporativo']).optional(),
   issueDate: z.string().min(1, 'La fecha de emisión es requerida'),
   dueDate: z.string().min(1, 'La fecha de vencimiento es requerida'),
   paymentMethod: z.string().min(1, 'El método de pago es requerido'),
@@ -41,6 +42,7 @@ export default function CreateInvoice() {
       clientNit: '',
       clientAddress: '',
       clientEmail: '',
+      clientSegment: 'retail',
       issueDate: new Date().toISOString().split('T')[0],
       dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0], // +30 días
       paymentMethod: 'Transferencia Bancaria',
@@ -109,6 +111,7 @@ export default function CreateInvoice() {
         clientNit: data.clientNit,
         clientAddress: data.clientAddress,
         clientEmail: data.clientEmail,
+        clientSegment: data.clientSegment,
         issueDate: data.issueDate,
         dueDate: data.dueDate,
         paymentMethod: data.paymentMethod,
@@ -243,6 +246,28 @@ export default function CreateInvoice() {
                         <FormControl>
                           <Input type="email" placeholder="contabilidad@empresa.com" {...field} />
                         </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="clientSegment"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Segmento del Cliente</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecciona un segmento" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="retail">Retail</SelectItem>
+                            <SelectItem value="mayorista">Mayorista</SelectItem>
+                            <SelectItem value="corporativo">Corporativo</SelectItem>
+                          </SelectContent>
+                        </Select>
                         <FormMessage />
                       </FormItem>
                     )}
