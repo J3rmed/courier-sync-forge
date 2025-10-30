@@ -1,15 +1,17 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, FileText, User, Calendar, CreditCard, Calculator, Download } from 'lucide-react';
+import { ArrowLeft, FileText, User, Calendar, CreditCard, Calculator, Download, Send, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Header } from '@/components/layout/Header';
 import { Invoice, STORAGE_KEYS } from '@/types';
 import { usePDFGenerator } from '@/hooks/usePDFGenerator';
+import { useInvoiceEmission } from '@/hooks/useInvoiceEmission';
 import { PDFTemplateSelector } from '@/components/PDFTemplateSelector';
 import { defaultTemplates } from '@/data/mockData';
 
@@ -18,9 +20,11 @@ export default function ViewInvoice() {
   const { id } = useParams();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
   const { generatePDF, isGenerating } = usePDFGenerator();
+  const { emitInvoice, isEmitting, validationErrors, validationWarnings } = useInvoiceEmission();
   const [selectedTemplate, setSelectedTemplate] = useState(
     defaultTemplates.find(t => t.segment === 'retail') || defaultTemplates[0]
   );
+  const [showEmissionDialog, setShowEmissionDialog] = useState(false);
 
   useEffect(() => {
     const savedInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
@@ -74,6 +78,19 @@ export default function ViewInvoice() {
     await generatePDF(invoice, selectedTemplate);
   };
 
+  const handleEmitInvoice = async () => {
+    if (!invoice) return;
+    
+    const result = await emitInvoice(invoice.id);
+    
+    if (result.success && result.invoice) {
+      setShowEmissionDialog(false);
+      // Recargar la factura con el nuevo folio
+      navigate(`/facturas/${result.invoice.id}/ver`);
+      window.location.reload();
+    }
+  };
+
   if (!invoice) {
     return (
       <div className="min-h-screen bg-background">
@@ -115,6 +132,89 @@ export default function ViewInvoice() {
               {getStatusBadge(invoice.status)}
             </div>
           </div>
+
+          {invoice.status === 'Borrador' && (
+            <Dialog open={showEmissionDialog} onOpenChange={setShowEmissionDialog}>
+              <DialogTrigger asChild>
+                <Button variant="default" className="gap-2">
+                  <Send className="h-4 w-4" />
+                  Emitir Factura
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                  <DialogTitle>Emitir Factura</DialogTitle>
+                  <DialogDescription>
+                    Se ejecutarán validaciones fiscales y se generará un folio único. Esta acción no se puede deshacer.
+                  </DialogDescription>
+                </DialogHeader>
+                
+                {validationErrors.length > 0 && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Errores de Validación</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-4 space-y-1 mt-2">
+                        {validationErrors.map((error, index) => (
+                          <li key={index} className="text-sm">{error}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                {validationWarnings.length > 0 && (
+                  <Alert>
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertTitle>Advertencias</AlertTitle>
+                    <AlertDescription>
+                      <ul className="list-disc pl-4 space-y-1 mt-2">
+                        {validationWarnings.map((warning, index) => (
+                          <li key={index} className="text-sm">{warning}</li>
+                        ))}
+                      </ul>
+                    </AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="space-y-3 py-4">
+                  <p className="text-sm text-muted-foreground">
+                    Al emitir la factura se realizarán las siguientes acciones:
+                  </p>
+                  <ul className="list-disc pl-6 space-y-2 text-sm">
+                    <li>Validación completa de datos fiscales</li>
+                    <li>Generación de folio fiscal único (formato F-YYYY-MM-XXXXXX)</li>
+                    <li>Cambio de estado a "Emitida" (no se podrá editar)</li>
+                    <li>Actualización de envíos asociados a "Facturado"</li>
+                  </ul>
+                </div>
+
+                <div className="flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowEmissionDialog(false)}
+                    disabled={isEmitting}
+                  >
+                    Cancelar
+                  </Button>
+                  <Button
+                    onClick={handleEmitInvoice}
+                    disabled={isEmitting}
+                    className="gap-2"
+                  >
+                    {isEmitting ? (
+                      <>Emitiendo...</>
+                    ) : (
+                      <>
+                        <Send className="h-4 w-4" />
+                        Confirmar Emisión
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+          )}
 
           {invoice.status === 'Emitida' && (
             <Dialog>

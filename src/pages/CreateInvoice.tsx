@@ -9,11 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Header } from '@/components/layout/Header';
 import { Shipment, Invoice, InvoiceItem, STORAGE_KEYS } from '@/types';
 import { toast } from '@/hooks/use-toast';
+import { validateInvoiceForEmission } from '@/lib/invoiceValidator';
+import { generateFiscalFolio } from '@/lib/fiscalFolioGenerator';
 
 const invoiceSchema = z.object({
   clientName: z.string().min(1, 'El nombre del cliente es requerido'),
@@ -104,9 +106,10 @@ export default function CreateInvoice() {
     setIsLoading(true);
     
     try {
-      const invoice: Invoice = {
-        id: generateInvoiceId(),
-        status: shouldEmit ? 'Emitida' : 'Borrador',
+      // Crear objeto de factura temporal
+      const tempInvoice: Invoice = {
+        id: 'TEMP',
+        status: 'Borrador',
         clientName: data.clientName,
         clientNit: data.clientNit,
         clientAddress: data.clientAddress,
@@ -123,13 +126,47 @@ export default function CreateInvoice() {
         observations: data.observations,
       };
 
+      // Si se va a emitir, validar primero
+      if (shouldEmit) {
+        const validation = validateInvoiceForEmission(tempInvoice);
+        
+        if (!validation.isValid) {
+          toast({
+            title: 'Validación fallida',
+            description: validation.errors[0],
+            variant: 'destructive',
+          });
+          setIsLoading(false);
+          return;
+        }
+
+        // Generar folio fiscal
+        const savedInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
+        const existingInvoices: Invoice[] = savedInvoices ? JSON.parse(savedInvoices) : [];
+        const fiscalFolio = generateFiscalFolio(existingInvoices);
+        
+        tempInvoice.id = fiscalFolio.id;
+        tempInvoice.status = 'Emitida';
+        
+        // Mostrar warnings
+        validation.warnings.forEach(warning => {
+          toast({
+            title: 'Advertencia',
+            description: warning,
+          });
+        });
+      } else {
+        // Generar ID de borrador
+        tempInvoice.id = generateInvoiceId();
+      }
+
       // Guardar factura
       const savedInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
       const invoices: Invoice[] = savedInvoices ? JSON.parse(savedInvoices) : [];
-      invoices.push(invoice);
+      invoices.push(tempInvoice);
       localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(invoices));
 
-      // Si se emite la factura, actualizar estado de envíos
+      // Actualizar envíos si se emitió
       if (shouldEmit) {
         const savedShipments = localStorage.getItem(STORAGE_KEYS.SHIPMENTS);
         if (savedShipments) {
@@ -143,14 +180,13 @@ export default function CreateInvoice() {
         }
       }
 
-      // Limpiar selección temporal
       sessionStorage.removeItem('selectedShipments');
 
       toast({
         title: shouldEmit ? 'Factura emitida' : 'Borrador guardado',
         description: shouldEmit 
-          ? `Factura ${invoice.id} emitida correctamente`
-          : `Borrador ${invoice.id} guardado correctamente`,
+          ? `Factura ${tempInvoice.id} emitida correctamente`
+          : `Borrador ${tempInvoice.id} guardado correctamente`,
       });
 
       navigate('/panel');

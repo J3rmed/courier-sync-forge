@@ -6,13 +6,15 @@ import { z } from 'zod';
 import { ArrowLeft, Save, Send, User, FileText, Calculator } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Header } from '@/components/layout/Header';
 import { Invoice, STORAGE_KEYS } from '@/types';
 import { useToast } from '@/hooks/use-toast';
+import { validateInvoiceForEmission } from '@/lib/invoiceValidator';
+import { generateFiscalFolio } from '@/lib/fiscalFolioGenerator';
 
 const invoiceSchema = z.object({
   clientName: z.string().min(2, 'El nombre del cliente es requerido'),
@@ -97,43 +99,85 @@ export default function EditInvoice() {
       const savedInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
       const allInvoices: Invoice[] = savedInvoices ? JSON.parse(savedInvoices) : [];
 
-      // Actualizar la factura específica
-      const updatedInvoices = allInvoices.map(inv => {
-        if (inv.id === id) {
-          // Si cambia a emitida, actualizar el ID de borrador a definitivo
-          const newId = status === 'Emitida' && inv.id.startsWith('Draft-') 
-            ? inv.id.replace('Draft-', 'F-')
-            : inv.id;
-          
-          return {
-            ...inv,
-            ...data,
-            id: newId,
-            status: status,
-          };
+      // Si se va a emitir, validar y generar folio fiscal
+      if (status === 'Emitida') {
+        // Crear factura temporal con los nuevos datos
+        const tempInvoice: Invoice = {
+          ...invoice,
+          ...data
+        };
+
+        // Validar antes de emitir
+        const validation = validateInvoiceForEmission(tempInvoice);
+        
+        if (!validation.isValid) {
+          toast({
+            title: 'Validación fallida',
+            description: validation.errors[0],
+            variant: 'destructive',
+          });
+          setLoading(false);
+          return;
         }
-        return inv;
-      });
 
-      // Guardar en localStorage
-      localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updatedInvoices));
+        // Generar folio fiscal
+        const fiscalFolio = generateFiscalFolio(allInvoices);
 
-      const actionText = status === 'Emitida' ? 'emitida' : 'actualizada';
-      toast({
-        title: `Factura ${actionText}`,
-        description: status === 'Emitida' 
-          ? "La factura ha sido emitida exitosamente y ya no se puede editar."
-          : "Los cambios han sido guardados exitosamente.",
-      });
+        // Actualizar factura con folio fiscal
+        const updatedInvoices = allInvoices.map(inv => {
+          if (inv.id === id) {
+            return {
+              ...inv,
+              ...data,
+              id: fiscalFolio.id,
+              status: 'Emitida',
+            };
+          }
+          return inv;
+        });
 
-      // Redirigir al panel
+        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updatedInvoices));
+
+        // Mostrar warnings
+        validation.warnings.forEach(warning => {
+          toast({
+            title: 'Advertencia',
+            description: warning,
+          });
+        });
+
+        toast({
+          title: 'Factura emitida',
+          description: `Folio fiscal: ${fiscalFolio.id}`,
+        });
+      } else {
+        // Solo actualizar borrador sin validación
+        const updatedInvoices = allInvoices.map(inv => {
+          if (inv.id === id) {
+            return {
+              ...inv,
+              ...data,
+              status: 'Borrador',
+            };
+          }
+          return inv;
+        });
+
+        localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updatedInvoices));
+
+        toast({
+          title: 'Factura actualizada',
+          description: 'Los cambios han sido guardados exitosamente.',
+        });
+      }
+
       navigate('/panel');
     } catch (error) {
       console.error('Error updating invoice:', error);
       toast({
-        title: "Error",
-        description: "Hubo un problema al actualizar la factura.",
-        variant: "destructive",
+        title: 'Error',
+        description: 'Hubo un problema al actualizar la factura.',
+        variant: 'destructive',
       });
     } finally {
       setLoading(false);
