@@ -13,18 +13,21 @@ import { Invoice, STORAGE_KEYS } from '@/types';
 import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import { useInvoiceEmission } from '@/hooks/useInvoiceEmission';
 import { PDFTemplateSelector } from '@/components/PDFTemplateSelector';
+import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { defaultTemplates } from '@/data/mockData';
 
 export default function ViewInvoice() {
   const navigate = useNavigate();
   const { id } = useParams();
   const [invoice, setInvoice] = useState<Invoice | null>(null);
-  const { generatePDF, isGenerating } = usePDFGenerator();
+  const { generatePDF, downloadPDF, isGenerating } = usePDFGenerator();
   const { emitInvoice, isEmitting, validationErrors, validationWarnings } = useInvoiceEmission();
   const [selectedTemplate, setSelectedTemplate] = useState(
     defaultTemplates.find(t => t.segment === 'retail') || defaultTemplates[0]
   );
   const [showEmissionDialog, setShowEmissionDialog] = useState(false);
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
 
   useEffect(() => {
     const savedInvoices = localStorage.getItem(STORAGE_KEYS.INVOICES);
@@ -75,7 +78,17 @@ export default function ViewInvoice() {
 
   const handleGeneratePDF = async () => {
     if (!invoice || !selectedTemplate) return;
-    await generatePDF(invoice, selectedTemplate);
+    const blob = await generatePDF(invoice, selectedTemplate, false);
+    
+    if (blob) {
+      setPdfBlob(blob);
+      setShowPDFPreview(true);
+    }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (!pdfBlob || !invoice) return;
+    downloadPDF(pdfBlob, invoice.id);
   };
 
   const handleEmitInvoice = async () => {
@@ -217,45 +230,48 @@ export default function ViewInvoice() {
           )}
 
           {invoice.status === 'Emitida' && (
-            <Dialog>
-              <DialogTrigger asChild>
-                <Button variant="default" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Generar PDF
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px]">
-                <DialogHeader>
-                  <DialogTitle>Generar PDF de Factura</DialogTitle>
-                  <DialogDescription>
-                    Selecciona la plantilla que deseas usar para el documento
-                  </DialogDescription>
-                </DialogHeader>
-                
-                <PDFTemplateSelector
-                  templates={defaultTemplates}
-                  selectedSegment={invoice.clientSegment}
-                  onSelectTemplate={setSelectedTemplate}
-                />
-                
-                <div className="flex justify-end gap-2 mt-4">
-                  <Button
-                    onClick={handleGeneratePDF}
-                    disabled={isGenerating}
-                    className="gap-2"
-                  >
-                    {isGenerating ? (
-                      <>Generando...</>
-                    ) : (
-                      <>
-                        <Download className="h-4 w-4" />
-                        Descargar PDF
-                      </>
-                    )}
+            <>
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button variant="default" className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Vista Previa PDF
                   </Button>
-                </div>
-              </DialogContent>
-            </Dialog>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Generar Vista Previa</DialogTitle>
+                    <DialogDescription>
+                      Selecciona la plantilla para previsualizar el PDF
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <PDFTemplateSelector
+                    templates={defaultTemplates}
+                    selectedSegment={invoice.clientSegment}
+                    onSelectTemplate={setSelectedTemplate}
+                  />
+                  
+                  <div className="flex justify-end gap-2 mt-4">
+                    <Button
+                      onClick={handleGeneratePDF}
+                      disabled={isGenerating}
+                      className="gap-2"
+                    >
+                      {isGenerating ? 'Generando...' : 'Ver Previsualización'}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+
+              <PDFPreviewDialog
+                open={showPDFPreview}
+                onOpenChange={setShowPDFPreview}
+                pdfBlob={pdfBlob}
+                invoiceId={invoice.id}
+                onDownload={handleDownloadFromPreview}
+              />
+            </>
           )}
         </div>
 

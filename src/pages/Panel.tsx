@@ -12,13 +12,17 @@ import { Invoice, STORAGE_KEYS } from '@/types';
 import { initialInvoices, defaultTemplates } from '@/data/mockData';
 import { usePDFGenerator } from '@/hooks/usePDFGenerator';
 import { useInvoiceEmission } from '@/hooks/useInvoiceEmission';
+import { PDFPreviewDialog } from '@/components/PDFPreviewDialog';
 import { resetLocalStorage } from '@/lib/resetData';
 
 export default function Panel() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [invoices, setInvoices] = useState<Invoice[]>([]);
-  const { generatePDF, isGenerating } = usePDFGenerator();
+  const [pdfBlob, setPdfBlob] = useState<Blob | null>(null);
+  const [showPDFPreview, setShowPDFPreview] = useState(false);
+  const [currentInvoiceId, setCurrentInvoiceId] = useState<string>('');
+  const { generatePDF, downloadPDF, isGenerating } = usePDFGenerator();
   const { emitInvoice, isEmitting } = useInvoiceEmission();
 
   useEffect(() => {
@@ -79,6 +83,25 @@ export default function Panel() {
       title: "Factura eliminada",
       description: "El borrador de la factura ha sido eliminado correctamente.",
     });
+  };
+
+  const handleQuickPDFPreview = async (invoice: Invoice) => {
+    const template = defaultTemplates.find(
+      t => t.segment === invoice.clientSegment
+    ) || defaultTemplates[0];
+    
+    const blob = await generatePDF(invoice, template, false);
+    
+    if (blob) {
+      setPdfBlob(blob);
+      setCurrentInvoiceId(invoice.id);
+      setShowPDFPreview(true);
+    }
+  };
+
+  const handleDownloadFromPreview = () => {
+    if (!pdfBlob || !currentInvoiceId) return;
+    downloadPDF(pdfBlob, currentInvoiceId);
   };
 
   return (
@@ -167,14 +190,9 @@ export default function Panel() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => {
-                                const template = defaultTemplates.find(
-                                  t => t.segment === invoice.clientSegment
-                                ) || defaultTemplates[0];
-                                generatePDF(invoice, template);
-                              }}
+                              onClick={() => handleQuickPDFPreview(invoice)}
                               disabled={isGenerating}
-                              title="Generar PDF"
+                              title="Vista previa PDF"
                             >
                               <Download className="h-4 w-4" />
                             </Button>
@@ -233,6 +251,14 @@ export default function Panel() {
             )}
           </CardContent>
         </Card>
+
+        <PDFPreviewDialog
+          open={showPDFPreview}
+          onOpenChange={setShowPDFPreview}
+          pdfBlob={pdfBlob}
+          invoiceId={currentInvoiceId}
+          onDownload={handleDownloadFromPreview}
+        />
       </main>
     </div>
   );

@@ -11,7 +11,7 @@ export const usePDFGenerator = () => {
   const generatePDF = async (
     invoice: Invoice,
     template: PDFTemplate,
-    autoDownload: boolean = true
+    autoDownload: boolean = false
   ): Promise<Blob | null> => {
     setIsGenerating(true);
     setError(null);
@@ -78,8 +78,24 @@ export const usePDFGenerator = () => {
     }
   };
 
+  const downloadPDF = (pdfBlob: Blob, invoiceId: string) => {
+    const url = URL.createObjectURL(pdfBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Factura-${invoiceId}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('PDF descargado', {
+      description: `Factura ${invoiceId} guardada correctamente`
+    });
+  };
+
   return {
     generatePDF,
+    downloadPDF,
     isGenerating,
     error
   };
