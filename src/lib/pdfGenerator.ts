@@ -1,6 +1,7 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Invoice, PDFTemplate } from '@/types';
+import { generateInvoiceQR } from '@/lib/qrGenerator';
 
 export interface PDFGenerationResult {
   success: boolean;
@@ -125,6 +126,7 @@ export const generateInvoicePDF = async (
     doc.text(formatCurrency(invoice.total), pageWidth - 15, finalY + 17, { align: 'right' });
     
     // 7. OBSERVACIONES
+    let observationsEndY = finalY + 30;
     if (invoice.observations) {
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -133,9 +135,95 @@ export const generateInvoicePDF = async (
       doc.setFontSize(9);
       const splitObservations = doc.splitTextToSize(invoice.observations, pageWidth - 30);
       doc.text(splitObservations, 15, finalY + 37);
+      observationsEndY = finalY + 37 + (splitObservations.length * 4);
     }
     
-    // 8. FOOTER
+    // 8. INFORMACIÓN FISCAL ELECTRÓNICA (QR + CUFE)
+    let fiscalSectionY = Math.max(observationsEndY + 15, finalY + 45);
+    
+    // Verificar si hay espacio suficiente, si no, agregar nueva página
+    if (fiscalSectionY > pageHeight - 80) {
+      doc.addPage();
+      fiscalSectionY = 20;
+    }
+    
+    if (invoice.cufe && invoice.status === 'Emitida') {
+      // Título de sección fiscal
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0, 0, 0);
+      doc.text('INFORMACIÓN DE FACTURACIÓN ELECTRÓNICA', 15, fiscalSectionY);
+      
+      // Resolución DIAN
+      if (template.dianResolution) {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(
+          `Autorizado mediante Resolución DIAN No. ${template.dianResolution}`,
+          15,
+          fiscalSectionY + 6
+        );
+        if (template.dianResolutionDate) {
+          doc.text(
+            `Fecha de autorización: ${new Date(template.dianResolutionDate).toLocaleDateString('es-CO')}`,
+            15,
+            fiscalSectionY + 11
+          );
+        }
+      }
+      
+      // Generar y agregar código QR
+      try {
+        const qrDataURL = await generateInvoiceQR(invoice, template);
+        const qrSize = 40; // 40mm
+        const qrX = 15;
+        const qrY = fiscalSectionY + 18;
+        
+        doc.addImage(qrDataURL, 'PNG', qrX, qrY, qrSize, qrSize);
+        
+        // Texto explicativo del QR
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'italic');
+        doc.text('Escanea para validar', qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' });
+      } catch (error) {
+        console.error('Error agregando QR al PDF:', error);
+      }
+      
+      // CUFE a la derecha del QR
+      const cufeX = 65;
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('CUFE (Código Único de Factura Electrónica):', cufeX, fiscalSectionY + 20);
+      
+      doc.setFontSize(7);
+      doc.setFont('courier', 'normal');
+      
+      // Dividir CUFE en líneas de 50 caracteres para mejor legibilidad
+      const cufeLines = [];
+      const cufe = invoice.cufe;
+      for (let i = 0; i < cufe.length; i += 50) {
+        cufeLines.push(cufe.substring(i, i + 50));
+      }
+      
+      let cufeY = fiscalSectionY + 26;
+      cufeLines.forEach(line => {
+        doc.text(line, cufeX, cufeY);
+        cufeY += 4;
+      });
+      
+      // Fecha de emisión electrónica
+      if (invoice.emissionTimestamp) {
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'normal');
+        doc.text(
+          `Fecha de emisión electrónica: ${new Date(invoice.emissionTimestamp).toLocaleString('es-CO')}`,
+          cufeX,
+          cufeY + 4
+        );
+      }
+    }
+    
+    // 9. FOOTER
     doc.setFillColor(template.secondaryColor);
     doc.rect(0, pageHeight - 20, pageWidth, 20, 'F');
     doc.setTextColor(255, 255, 255);

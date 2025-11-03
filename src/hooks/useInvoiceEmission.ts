@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { Invoice, STORAGE_KEYS, Shipment } from '@/types';
+import { Invoice, STORAGE_KEYS, Shipment, PDFTemplate } from '@/types';
 import { validateInvoiceForEmission } from '@/lib/invoiceValidator';
 import { generateFiscalFolio } from '@/lib/fiscalFolioGenerator';
+import { generateCUFE } from '@/lib/cufeGenerator';
 import { toast } from 'sonner';
 import { logPDFAction } from '@/lib/pdfLogger';
+import { defaultTemplates } from '@/data/mockData';
 
 interface EmissionResult {
   success: boolean;
@@ -67,22 +69,29 @@ export const useInvoiceEmission = () => {
         templateId: `fiscal_folio_${fiscalFolio.id}`
       });
 
-      // 4. Actualizar la factura
+      // 4. Generar CUFE (Código Único de Factura Electrónica)
+      const emissionTimestamp = new Date();
+      const template = defaultTemplates.find(t => t.segment === invoice.clientSegment) || defaultTemplates[0];
+      const cufeData = await generateCUFE(invoice, template, emissionTimestamp);
+
+      // 5. Actualizar la factura
       const updatedInvoice: Invoice = {
         ...invoice,
         id: fiscalFolio.id,
         status: 'Emitida',
+        cufe: cufeData.cufe,
+        emissionTimestamp: cufeData.timestamp,
         pdfGeneratedAt: undefined, // Resetear para regenerar PDF con nuevo folio
       };
 
-      // 5. Guardar en localStorage
+      // 6. Guardar en localStorage
       const updatedInvoices = invoices.map(inv => 
         inv.id === invoiceId ? updatedInvoice : inv
       );
 
       localStorage.setItem(STORAGE_KEYS.INVOICES, JSON.stringify(updatedInvoices));
 
-      // 6. Actualizar estado de envíos asociados (si existen)
+      // 7. Actualizar estado de envíos asociados (si existen)
       const savedShipments = localStorage.getItem(STORAGE_KEYS.SHIPMENTS);
       if (savedShipments) {
         const shipments: Shipment[] = JSON.parse(savedShipments);
@@ -102,7 +111,7 @@ export const useInvoiceEmission = () => {
         localStorage.setItem(STORAGE_KEYS.SHIPMENTS, JSON.stringify(updatedShipments));
       }
 
-      // 7. Mostrar warnings si existen
+      // 8. Mostrar warnings si existen
       if (validation.warnings.length > 0) {
         setValidationWarnings(validation.warnings);
         validation.warnings.forEach(warning => {
@@ -110,7 +119,7 @@ export const useInvoiceEmission = () => {
         });
       }
 
-      // 8. Toast de éxito
+      // 9. Toast de éxito
       toast.success('Factura emitida exitosamente', {
         description: `Folio fiscal: ${fiscalFolio.id}`
       });

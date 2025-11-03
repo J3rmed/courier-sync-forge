@@ -41,6 +41,9 @@ export interface PDFTemplate {
     phone: string;
     email: string;
   };
+  dianResolution?: string;
+  dianResolutionDate?: string;
+  technicalKey?: string;
 }
 
 // Modelo principal de la Factura
@@ -71,6 +74,10 @@ export interface Invoice {
   // Metadatos de PDF
   pdfGeneratedAt?: string; // Timestamp de generación del PDF
   pdfUrl?: string; // URL del PDF generado (si se guarda)
+  
+  // Datos de Facturación Electrónica
+  cufe?: string; // Código Único de Factura Electrónica
+  emissionTimestamp?: string; // Timestamp exacto de emisión (ISO)
 }
 
 // Usuario simulado

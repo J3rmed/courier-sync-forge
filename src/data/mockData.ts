@@ -64,7 +64,10 @@ export const defaultTemplates: PDFTemplate[] = [
       address: 'Calle 100 #19-20, Bogotá',
       phone: '+57 (1) 600-0000',
       email: 'facturacion@couriersync.com'
-    }
+    },
+    dianResolution: '18764003820498',
+    dianResolutionDate: '2024-01-15',
+    technicalKey: '7b8d9e4f5a6c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8'
   },
   {
     id: 'template-mayorista',
@@ -79,7 +82,10 @@ export const defaultTemplates: PDFTemplate[] = [
       address: 'Calle 100 #19-20, Bogotá',
       phone: '+57 (1) 600-0000',
       email: 'mayoristas@couriersync.com'
-    }
+    },
+    dianResolution: '18764003820498',
+    dianResolutionDate: '2024-01-15',
+    technicalKey: '7b8d9e4f5a6c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8'
   },
   {
     id: 'template-corporativo',
@@ -94,7 +100,10 @@ export const defaultTemplates: PDFTemplate[] = [
       address: 'Calle 100 #19-20, Bogotá',
       phone: '+57 (1) 600-0000',
       email: 'corporativo@couriersync.com'
-    }
+    },
+    dianResolution: '18764003820498',
+    dianResolutionDate: '2024-01-15',
+    technicalKey: '7b8d9e4f5a6c3d2e1f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8'
   }
 ];
 

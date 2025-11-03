@@ -197,6 +197,8 @@ export default function ViewInvoice() {
                   <ul className="list-disc pl-6 space-y-2 text-sm">
                     <li>Validación completa de datos fiscales</li>
                     <li>Generación de folio fiscal único (formato F-YYYY-MM-XXXXXX)</li>
+                    <li>Generación de CUFE (Código Único de Factura Electrónica)</li>
+                    <li>Creación de código QR con información de validación</li>
                     <li>Cambio de estado a "Emitida" (no se podrá editar)</li>
                     <li>Actualización de envíos asociados a "Facturado"</li>
                   </ul>
@@ -338,6 +340,22 @@ export default function ViewInvoice() {
                 <label className="text-sm font-medium text-muted-foreground">Moneda</label>
                 <p className="text-sm">{invoice.currency}</p>
               </div>
+              
+              {invoice.cufe && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium text-muted-foreground">CUFE (Código Único de Factura Electrónica)</label>
+                  <p className="text-xs font-mono break-all bg-muted p-2 rounded mt-1">
+                    {invoice.cufe}
+                  </p>
+                </div>
+              )}
+              
+              {invoice.emissionTimestamp && (
+                <div>
+                  <label className="text-sm font-medium text-muted-foreground">Fecha Emisión Electrónica</label>
+                  <p className="text-sm">{formatDate(invoice.emissionTimestamp)}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
