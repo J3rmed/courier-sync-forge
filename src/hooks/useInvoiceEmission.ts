@@ -72,7 +72,10 @@ export const useInvoiceEmission = () => {
       // 4. Generar CUFE (Código Único de Factura Electrónica)
       const emissionTimestamp = new Date();
       const template = defaultTemplates.find(t => t.segment === invoice.clientSegment) || defaultTemplates[0];
+      
+      console.log('Generando CUFE para factura:', invoice.id);
       const cufeData = await generateCUFE(invoice, template, emissionTimestamp);
+      console.log('✅ CUFE generado:', cufeData.cufe.substring(0, 30) + '...');
 
       // 5. Actualizar la factura
       const updatedInvoice: Invoice = {

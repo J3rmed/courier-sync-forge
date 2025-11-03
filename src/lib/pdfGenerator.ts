@@ -147,7 +147,14 @@ export const generateInvoicePDF = async (
       fiscalSectionY = 20;
     }
     
+    console.log('Verificando CUFE:', {
+      tieneCUFE: !!invoice.cufe,
+      estado: invoice.status,
+      cufe: invoice.cufe?.substring(0, 20) + '...'
+    });
+    
     if (invoice.cufe && invoice.status === 'Emitida') {
+      console.log('Generando sección de facturación electrónica');
       // Título de sección fiscal
       doc.setFontSize(10);
       doc.setFont('helvetica', 'bold');
@@ -174,7 +181,9 @@ export const generateInvoicePDF = async (
       
       // Generar y agregar código QR
       try {
+        console.log('Generando código QR...');
         const qrDataURL = await generateInvoiceQR(invoice, template);
+        console.log('QR generado exitosamente');
         const qrSize = 40; // 40mm
         const qrX = 15;
         const qrY = fiscalSectionY + 18;
@@ -186,7 +195,8 @@ export const generateInvoicePDF = async (
         doc.setFont('helvetica', 'italic');
         doc.text('Escanea para validar', qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' });
       } catch (error) {
-        console.error('Error agregando QR al PDF:', error);
+        console.error('❌ Error agregando QR al PDF:', error);
+        console.error('Error completo:', error);
       }
       
       // CUFE a la derecha del QR
