@@ -2,6 +2,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Invoice, PDFTemplate } from '@/types';
 import { generateInvoiceQR } from '@/lib/qrGenerator';
+import { generateCUFE } from '@/lib/cufeGenerator';
 
 export interface PDFGenerationResult {
   success: boolean;
@@ -153,83 +154,104 @@ export const generateInvoicePDF = async (
       cufe: invoice.cufe?.substring(0, 20) + '...'
     });
     
-    if (invoice.cufe && invoice.status === 'Emitida') {
+    if (invoice.status === 'Emitida') {
       console.log('Generando sección de facturación electrónica');
-      // Título de sección fiscal
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(0, 0, 0);
-      doc.text('INFORMACIÓN DE FACTURACIÓN ELECTRÓNICA', 15, fiscalSectionY);
-      
-      // Resolución DIAN
-      if (template.dianResolution) {
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(
-          `Autorizado mediante Resolución DIAN No. ${template.dianResolution}`,
-          15,
-          fiscalSectionY + 6
-        );
-        if (template.dianResolutionDate) {
-          doc.text(
-            `Fecha de autorización: ${new Date(template.dianResolutionDate).toLocaleDateString('es-CO')}`,
-            15,
-            fiscalSectionY + 11
-          );
+      // Asegurar CUFE disponible (fallback si falta)
+      let cufeToUse = invoice.cufe;
+      if (!cufeToUse) {
+        try {
+          console.warn('CUFE no presente en la factura. Generando CUFE en tiempo de PDF.');
+          const emissionDate = invoice.emissionTimestamp
+            ? new Date(invoice.emissionTimestamp)
+            : new Date();
+          const cufeData = await generateCUFE(invoice, template, emissionDate);
+          cufeToUse = cufeData.cufe;
+          console.log('CUFE generado para PDF:', cufeToUse.substring(0, 30) + '...');
+        } catch (e) {
+          console.error('No se pudo generar CUFE en PDF:', e);
         }
       }
-      
-      // Generar y agregar código QR
-      try {
-        console.log('Generando código QR...');
-        const qrDataURL = await generateInvoiceQR(invoice, template);
-        console.log('QR generado exitosamente');
-        const qrSize = 40; // 40mm
-        const qrX = 15;
-        const qrY = fiscalSectionY + 18;
+
+      if (!cufeToUse) {
+        console.warn('Omitiendo sección fiscal: CUFE no disponible.');
+      } else {
+        // Título de sección fiscal
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(0, 0, 0);
+        doc.text('INFORMACIÓN DE FACTURACIÓN ELECTRÓNICA', 15, fiscalSectionY);
         
-        doc.addImage(qrDataURL, 'PNG', qrX, qrY, qrSize, qrSize);
+        // Resolución DIAN
+        if (template.dianResolution) {
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.text(
+            `Autorizado mediante Resolución DIAN No. ${template.dianResolution}`,
+            15,
+            fiscalSectionY + 6
+          );
+          if (template.dianResolutionDate) {
+            doc.text(
+              `Fecha de autorización: ${new Date(template.dianResolutionDate).toLocaleDateString('es-CO')}`,
+              15,
+              fiscalSectionY + 11
+            );
+          }
+        }
         
-        // Texto explicativo del QR
+        // Generar y agregar código QR
+        try {
+          console.log('Generando código QR...');
+          const invoiceForQR: Invoice = { ...invoice, cufe: cufeToUse };
+          const qrDataURL = await generateInvoiceQR(invoiceForQR, template);
+          console.log('QR generado exitosamente');
+          const qrSize = 40; // 40mm
+          const qrX = 15;
+          const qrY = fiscalSectionY + 18;
+          
+          doc.addImage(qrDataURL, 'PNG', qrX, qrY, qrSize, qrSize);
+          
+          // Texto explicativo del QR
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'italic');
+          doc.text('Escanea para validar', qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' });
+        } catch (error) {
+          console.error('❌ Error agregando QR al PDF:', error);
+          console.error('Error completo:', error);
+        }
+        
+        // CUFE a la derecha del QR
+        const cufeX = 65;
+        doc.setFontSize(9);
+        doc.setFont('helvetica', 'bold');
+        doc.text('CUFE (Código Único de Factura Electrónica):', cufeX, fiscalSectionY + 20);
+        
         doc.setFontSize(7);
-        doc.setFont('helvetica', 'italic');
-        doc.text('Escanea para validar', qrX + qrSize / 2, qrY + qrSize + 4, { align: 'center' });
-      } catch (error) {
-        console.error('❌ Error agregando QR al PDF:', error);
-        console.error('Error completo:', error);
-      }
-      
-      // CUFE a la derecha del QR
-      const cufeX = 65;
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('CUFE (Código Único de Factura Electrónica):', cufeX, fiscalSectionY + 20);
-      
-      doc.setFontSize(7);
-      doc.setFont('courier', 'normal');
-      
-      // Dividir CUFE en líneas de 50 caracteres para mejor legibilidad
-      const cufeLines = [];
-      const cufe = invoice.cufe;
-      for (let i = 0; i < cufe.length; i += 50) {
-        cufeLines.push(cufe.substring(i, i + 50));
-      }
-      
-      let cufeY = fiscalSectionY + 26;
-      cufeLines.forEach(line => {
-        doc.text(line, cufeX, cufeY);
-        cufeY += 4;
-      });
-      
-      // Fecha de emisión electrónica
-      if (invoice.emissionTimestamp) {
-        doc.setFontSize(8);
-        doc.setFont('helvetica', 'normal');
-        doc.text(
-          `Fecha de emisión electrónica: ${new Date(invoice.emissionTimestamp).toLocaleString('es-CO')}`,
-          cufeX,
-          cufeY + 4
-        );
+        doc.setFont('courier', 'normal');
+        
+        // Dividir CUFE en líneas de 50 caracteres para mejor legibilidad
+        const cufeLines: string[] = [];
+        const cufeStr = cufeToUse;
+        for (let i = 0; i < cufeStr.length; i += 50) {
+          cufeLines.push(cufeStr.substring(i, i + 50));
+        }
+        
+        let cufeY = fiscalSectionY + 26;
+        cufeLines.forEach(line => {
+          doc.text(line, cufeX, cufeY);
+          cufeY += 4;
+        });
+        
+        // Fecha de emisión electrónica
+        if (invoice.emissionTimestamp) {
+          doc.setFontSize(8);
+          doc.setFont('helvetica', 'normal');
+          doc.text(
+            `Fecha de emisión electrónica: ${new Date(invoice.emissionTimestamp).toLocaleString('es-CO')}`,
+            cufeX,
+            cufeY + 4
+          );
+        }
       }
     }
     
